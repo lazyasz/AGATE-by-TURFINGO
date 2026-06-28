@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Register your team for an Agate Esports tournament.">
+  <title>Team Registration — Agate Esports</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='28' font-size='28'>🎮</text></svg>">
+</head>
+<body>
+  <nav class="navbar">
+    <a href="index.html" class="nav-brand">AGATE<span>ESPORTS</span></a>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="tournaments.html">Tournaments</a>
+      <a href="team-registration.html" class="active">Register Team</a>
+    </div>
+    <div class="nav-auth"></div>
+    <button class="hamburger" aria-label="Toggle menu"><span></span><span></span><span></span></button>
+  </nav>
+
+  <main class="page-content">
+    <div class="container" style="max-width:800px;">
+      <!-- Tournament Banner -->
+      <div id="tournament-banner" class="card fade-in" style="margin-bottom:2rem;border-left:3px solid var(--accent);">
+        <div class="card-body" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;">
+          <div>
+            <div style="font-size:0.7rem;color:var(--accent);text-transform:uppercase;letter-spacing:2px;font-family:var(--font-heading);margin-bottom:0.25rem;">Registering For</div>
+            <h2 id="banner-title" style="font-family:var(--font-heading);font-size:1.1rem;font-weight:700;">Select a Tournament</h2>
+            <p id="banner-desc" style="font-size:0.8rem;color:var(--text-secondary);margin-top:0.25rem;"></p>
+          </div>
+          <div id="banner-prize" class="prize-pool" style="font-size:1.3rem;"></div>
+        </div>
+      </div>
+
+      <div class="card fade-in">
+        <div class="card-body" style="padding:2rem;">
+          <h1 style="font-family:var(--font-heading);font-size:1.3rem;font-weight:700;margin-bottom:1.5rem;">Team <span style="color:var(--accent)">Registration</span></h1>
+
+          <form id="team-form" novalidate>
+            <!-- Tournament Select -->
+            <div class="form-group">
+              <label class="form-label" for="tournament-select">Tournament</label>
+              <select class="form-input" id="tournament-select">
+                <option value="">— Choose a tournament —</option>
+              </select>
+              <div class="form-error" id="tournament-select-error"></div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" for="team-name">Team Name</label>
+                <input class="form-input" type="text" id="team-name" placeholder="Team Agate">
+                <div class="form-error" id="team-name-error"></div>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="team-tag">Team Tag</label>
+                <input class="form-input" type="text" id="team-tag" placeholder="AGT" maxlength="5">
+                <div class="form-error" id="team-tag-error"></div>
+              </div>
+            </div>
+
+            <!-- Players Section -->
+            <div style="display:flex;justify-content:space-between;align-items:center;margin:1.5rem 0 1rem;">
+              <h3 style="font-family:var(--font-heading);font-size:0.85rem;font-weight:600;">Player Roster</h3>
+              <button type="button" id="add-player-btn" class="btn btn-sm btn-outline">+ Add Player</button>
+            </div>
+            <div id="players-container"></div>
+            <div class="form-error" id="players-error" style="margin-bottom:1rem;"></div>
+
+            <button type="submit" class="btn btn-primary btn-lg" style="width:100%;margin-top:1rem;">Submit Registration</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="app.js"></script>
+  <script>
+    let playerCount = 0;
+    const maxPlayers = 7;
+    const minPlayers = 3;
+
+    function addPlayerRow() {
+      if (playerCount >= maxPlayers) { App.toast('Maximum ' + maxPlayers + ' players allowed.', 'error'); return; }
+      playerCount++;
+      const container = document.getElementById('players-container');
+      const row = document.createElement('div');
+      row.className = 'player-row';
+      row.id = 'player-row-' + playerCount;
+      const num = playerCount;
+      row.innerHTML = `
+        <div class="player-row-header">PLAYER ${num}</div>
+        <div class="form-group" style="margin:0;">
+          <label class="form-label" for="pname-${num}">Name</label>
+          <input class="form-input" type="text" id="pname-${num}" placeholder="Player name">
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label class="form-label" for="pign-${num}">In-Game ID</label>
+          <input class="form-input" type="text" id="pign-${num}" placeholder="IGN#TAG">
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label class="form-label" for="prole-${num}">Role</label>
+          <select class="form-input" id="prole-${num}">
+            ${App.ROLES.map(r => `<option value="${r}">${r}</option>`).join('')}
+          </select>
+        </div>
+        <button type="button" class="remove-player-btn" onclick="removePlayer(${num})" title="Remove player">✕</button>
+      `;
+      container.appendChild(row);
+      updateAddBtn();
+    }
+
+    function removePlayer(n) {
+      const row = document.getElementById('player-row-' + n);
+      if (row) { row.style.opacity = '0'; row.style.transform = 'translateX(20px)'; setTimeout(() => { row.remove(); playerCount--; renumberPlayers(); updateAddBtn(); }, 200); }
+    }
+
+    function renumberPlayers() {
+      const rows = document.querySelectorAll('#players-container .player-row');
+      playerCount = rows.length;
+      rows.forEach((row, i) => {
+        const num = i + 1;
+        row.querySelector('.player-row-header').textContent = 'PLAYER ' + num;
+      });
+    }
+
+    function updateAddBtn() {
+      const btn = document.getElementById('add-player-btn');
+      btn.disabled = playerCount >= maxPlayers;
+      btn.textContent = playerCount >= maxPlayers ? 'Roster Full' : '+ Add Player';
+    }
+
+    function getPlayers() {
+      const rows = document.querySelectorAll('#players-container .player-row');
+      const players = [];
+      rows.forEach(row => {
+        const inputs = row.querySelectorAll('input');
+        const select = row.querySelector('select');
+        players.push({ name: inputs[0]?.value.trim(), ign: inputs[1]?.value.trim(), role: select?.value || '' });
+      });
+      return players;
+    }
+
+    // Populate tournament select
+    const tournaments = App.getTournaments().filter(t => t.status !== 'full');
+    const sel = document.getElementById('tournament-select');
+    tournaments.forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t.id;
+      opt.textContent = `${t.game} — ${t.title}`;
+      sel.appendChild(opt);
+    });
+
+    // Pre-select from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const preselect = urlParams.get('t');
+    if (preselect) { sel.value = preselect; updateBanner(preselect); }
+
+    sel.addEventListener('change', () => updateBanner(sel.value));
+
+    function updateBanner(tId) {
+      const t = App.getTournament(tId);
+      if (t) {
+        document.getElementById('banner-title').textContent = t.title;
+        document.getElementById('banner-desc').textContent = `${t.game} • ${t.desc} • ${App.formatDate(t.date)}`;
+        document.getElementById('banner-prize').textContent = t.prize;
+      }
+    }
+
+    // Seed 3 default player rows
+    for (let i = 0; i < 3; i++) addPlayerRow();
+
+    document.getElementById('add-player-btn').addEventListener('click', addPlayerRow);
+
+    document.getElementById('team-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      // Auth check
+      if (!App.isLoggedIn()) { App.toast('Please login or register first.', 'error'); setTimeout(() => window.location.href = 'login.html', 800); return; }
+
+      let ok = App.validate([
+        { input: 'tournament-select', error: 'tournament-select-error', checks: [App.V.required('Tournament')] },
+        { input: 'team-name', error: 'team-name-error', checks: [App.V.required('Team Name'), App.V.minLen(2)] },
+        { input: 'team-tag', error: 'team-tag-error', checks: [App.V.required('Team Tag')] },
+      ]);
+
+      const players = getPlayers();
+      const errEl = document.getElementById('players-error');
+      if (players.length < minPlayers) {
+        errEl.textContent = `At least ${minPlayers} players required.`;
+        errEl.classList.add('visible');
+        ok = false;
+      } else {
+        const incomplete = players.some(p => !p.name || !p.ign);
+        if (incomplete) {
+          errEl.textContent = 'All player names and in-game IDs are required.';
+          errEl.classList.add('visible');
+          ok = false;
+        } else {
+          errEl.classList.remove('visible');
+        }
+      }
+
+      if (!ok) return;
+
+      const team = App.registerTeam(
+        document.getElementById('team-name').value.trim(),
+        document.getElementById('team-tag').value.trim().toUpperCase(),
+        document.getElementById('tournament-select').value,
+        players
+      );
+
+      App.toast('Team registered successfully!', 'success');
+      setTimeout(() => {
+        window.location.href = 'confirmation.html?id=' + team.id;
+      }, 500);
+    });
+  </script>
+</body>
+</html>

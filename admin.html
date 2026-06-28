@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Admin dashboard — Agate Esports tournament management.">
+  <title>Admin Dashboard — Agate Esports</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='28' font-size='28'>🎮</text></svg>">
+</head>
+<body>
+  <nav class="navbar">
+    <a href="index.html" class="nav-brand">AGATE<span>ESPORTS</span></a>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="tournaments.html">Tournaments</a>
+      <a href="admin.html" class="active">Dashboard</a>
+    </div>
+    <div class="nav-auth"></div>
+    <button class="hamburger" aria-label="Toggle menu"><span></span><span></span><span></span></button>
+  </nav>
+
+  <main class="page-content">
+    <div class="container">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;margin-bottom:0.5rem;">
+        <div>
+          <h1 class="section-title">Admin <span>Dashboard</span></h1>
+          <p class="section-subtitle" style="margin-bottom:0;">Manage tournament registrations and teams.</p>
+        </div>
+        <button id="clear-data-btn" class="btn btn-sm btn-danger">Clear All Data</button>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-grid" id="stats-grid">
+        <div class="stat-card"><div class="stat-number" id="stat-teams">0</div><div class="stat-label">Registered Teams</div></div>
+        <div class="stat-card"><div class="stat-number" id="stat-players">0</div><div class="stat-label">Total Players</div></div>
+        <div class="stat-card"><div class="stat-number" id="stat-tournaments">0</div><div class="stat-label">Active Tournaments</div></div>
+        <div class="stat-card"><div class="stat-number" id="stat-users">0</div><div class="stat-label">Registered Users</div></div>
+      </div>
+
+      <!-- Filter -->
+      <div class="filter-bar">
+        <div class="search-wrapper">
+          <input type="text" class="search-input" id="admin-search" placeholder="Search teams or players...">
+        </div>
+        <select class="form-input" id="admin-filter-game" style="max-width:200px;">
+          <option value="">All Tournaments</option>
+        </select>
+      </div>
+
+      <!-- Teams Table -->
+      <div class="table-wrapper" id="teams-table-wrapper">
+        <table class="data-table" id="teams-table">
+          <thead>
+            <tr>
+              <th style="width:30px;"></th>
+              <th>Team</th>
+              <th>Tournament</th>
+              <th>Players</th>
+              <th>Reg ID</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody id="teams-tbody"></tbody>
+        </table>
+      </div>
+      <p id="no-teams" style="display:none;text-align:center;color:var(--text-secondary);padding:3rem 0;">No teams registered yet. Registrations will appear here.</p>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-bottom">© 2026 Agate Esports. Admin Panel.</div>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      if (!App.isAdmin()) {
+        App.toast('Admin access required. Please login as admin.', 'error');
+        setTimeout(() => window.location.href = 'login.html', 1000);
+        return;
+      }
+      populateFilters();
+      renderDashboard();
+    });
+
+    function populateFilters() {
+      const sel = document.getElementById('admin-filter-game');
+      App.getTournaments().forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t.id;
+        opt.textContent = `${t.game} — ${t.title}`;
+        sel.appendChild(opt);
+      });
+    }
+
+    function renderDashboard() {
+      const teams = App.getTeams();
+      const tournaments = App.getTournaments();
+      const users = JSON.parse(localStorage.getItem('ag_users') || '[]');
+      const totalPlayers = teams.reduce((sum, t) => sum + t.players.length, 0);
+
+      document.getElementById('stat-teams').textContent = teams.length;
+      document.getElementById('stat-players').textContent = totalPlayers;
+      document.getElementById('stat-tournaments').textContent = tournaments.length;
+      document.getElementById('stat-users').textContent = users.length;
+
+      renderTable();
+    }
+
+    function renderTable() {
+      const search = document.getElementById('admin-search').value.toLowerCase();
+      const filterTournament = document.getElementById('admin-filter-game').value;
+      let teams = App.getTeams();
+
+      if (search) {
+        teams = teams.filter(t =>
+          t.name.toLowerCase().includes(search) ||
+          t.tag.toLowerCase().includes(search) ||
+          t.regId.toLowerCase().includes(search) ||
+          t.players.some(p => p.name.toLowerCase().includes(search) || p.ign.toLowerCase().includes(search))
+        );
+      }
+      if (filterTournament) teams = teams.filter(t => t.tournamentId === filterTournament);
+
+      const tbody = document.getElementById('teams-tbody');
+      const noTeams = document.getElementById('no-teams');
+
+      if (teams.length === 0) {
+        tbody.innerHTML = '';
+        noTeams.style.display = 'block';
+        document.getElementById('teams-table-wrapper').style.display = 'none';
+        return;
+      }
+      noTeams.style.display = 'none';
+      document.getElementById('teams-table-wrapper').style.display = 'block';
+
+      tbody.innerHTML = teams.map((team, idx) => {
+        const tournament = App.getTournament(team.tournamentId);
+        return `
+          <tr>
+            <td><button class="expand-btn" onclick="toggleExpand(${idx})">▶</button></td>
+            <td><strong>${team.name}</strong> <span style="color:var(--accent);font-size:0.8rem;">[${team.tag}]</span></td>
+            <td>${tournament ? tournament.game + ' — ' + tournament.title : team.tournamentId}</td>
+            <td>${team.players.length}</td>
+            <td><span style="font-family:var(--font-heading);font-size:0.75rem;color:var(--accent);">${team.regId}</span></td>
+            <td>${App.formatDate(team.registeredAt)}</td>
+          </tr>
+          <tr class="player-details" id="expand-${idx}">
+            <td colspan="6">
+              <div style="padding:0.5rem 0;">
+                ${team.players.map(p => `<span class="player-chip">👤 ${p.name} <span style="color:var(--text-muted);">${p.ign}</span> <span style="color:var(--accent);font-size:0.65rem;">${p.role}</span></span>`).join('')}
+              </div>
+            </td>
+          </tr>`;
+      }).join('');
+    }
+
+    function toggleExpand(idx) {
+      const row = document.getElementById('expand-' + idx);
+      if (row) row.classList.toggle('visible');
+    }
+
+    document.getElementById('admin-search').addEventListener('input', renderTable);
+    document.getElementById('admin-filter-game').addEventListener('change', renderTable);
+
+    document.getElementById('clear-data-btn').addEventListener('click', () => {
+      if (confirm('Clear all team registrations? This cannot be undone.')) {
+        localStorage.removeItem('ag_teams');
+        localStorage.removeItem('ag_tournaments');
+        App.toast('All registration data cleared.', 'info');
+        setTimeout(() => location.reload(), 500);
+      }
+    });
+  </script>
+</body>
+</html>
